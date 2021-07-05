@@ -9,17 +9,33 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 8
       - name: Lint
-        uses: DeLaGuardo/clojure-lint-action@v1
+        uses: DeLaGuardo/clojure-lint-action@master
         with:
           clj-kondo-args: --lint src test
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Test
-        run: lein test
+      - name: Unit tests
+        run: lein cloverage --lcov --junit
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1.17
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: "target/coverage/junit.xml"
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          path-to-lcov: "target/coverage/lcov.info"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         env:
